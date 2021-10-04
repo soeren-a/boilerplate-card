@@ -1,7 +1,7 @@
 {
-  "name": "boilerplate-card",
-  "version": "1.4.0",
-  "description": "Lovelace boilerplate-card",
+  "name": "settings-card",
+  "version": "1.0.0",
+  "description": "Lovelace Settings Card",
   "keywords": [
     "home-assistant",
     "homeassistant",
@@ -10,10 +10,8 @@
     "lovelace",
     "custom-cards"
   ],
-  "module": "boilerplate-card.js",
-  "repository": "git@github.com:custom_cards/boilerplate-card.git",
-  "author": "Ian Richardson <iantrich@gmail.com>",
-  "license": "MIT",
+  "module": "settings-card.js",
+  "author": "Soeren Ammedick",
   "dependencies": {
     "custom-card-helpers": "^1.7.2",
     "home-assistant-js-websocket": "^4.5.0",

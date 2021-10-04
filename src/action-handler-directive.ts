@@ -4,7 +4,7 @@ import { AttributePart, directive, Directive, DirectiveParameters } from 'lit/di
 import { ActionHandlerDetail, ActionHandlerOptions } from 'custom-card-helpers/dist/types';
 import { fireEvent } from 'custom-card-helpers';
 
-const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
+const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.maxTouchPoints > 0;
 
 interface ActionHandler extends HTMLElement {
   holdTime: number;
@@ -162,16 +162,15 @@ class ActionHandler extends HTMLElement implements ActionHandler {
   }
 }
 
-// TODO You need to replace all instances of "action-handler-boilerplate" with "action-handler-<your card name>"
-customElements.define('action-handler-boilerplate', ActionHandler);
+customElements.define('action-handler-settings', ActionHandler);
 
 const getActionHandler = (): ActionHandler => {
   const body = document.body;
-  if (body.querySelector('action-handler-boilerplate')) {
-    return body.querySelector('action-handler-boilerplate') as ActionHandler;
+  if (body.querySelector('action-handler-settings')) {
+    return body.querySelector('action-handler-settings') as ActionHandler;
   }
 
-  const actionhandler = document.createElement('action-handler-boilerplate');
+  const actionhandler = document.createElement('action-handler-settings');
   body.appendChild(actionhandler);
 
   return actionhandler as ActionHandler;
@@ -187,12 +186,16 @@ export const actionHandlerBind = (element: ActionHandlerElement, options?: Actio
 
 export const actionHandler = directive(
   class extends Directive {
+    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
     update(part: AttributePart, [options]: DirectiveParameters<this>) {
       actionHandlerBind(part.element as ActionHandlerElement, options);
       return noChange;
     }
 
     // eslint-disable-next-line @typescript-eslint/no-empty-function
-    render(_options?: ActionHandlerOptions) {}
+    render(_options?: ActionHandlerOptions): void {
+      console.log(_options
+      )
+    }
   },
 );
