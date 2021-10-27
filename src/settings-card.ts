@@ -38,6 +38,7 @@ import "./editor";
 import type { SettingsCardConfig } from "./types";
 import { actionHandler } from "./action-handler-directive";
 import { localize } from "./localize/localize";
+import { SettingsChangeEvent } from "./valve-settings";
 
 /* eslint no-console: 0 */
 
@@ -131,14 +132,14 @@ export class BoilerplateCard extends LitElement {
           .label=${`Settings: ${this.config.entity || "No Entity Defined"}`}
         >
           <valve-settings @saved=${(event: CustomEvent) => {
-            const valveSettings = JSON.parse(event.detail.message)
+            const valveSettings = JSON.parse(event.detail.message) as SettingsChangeEvent
 
             this.hass.callService('mqtt', 'publish', {
               topic: `zigbee2mqtt/${valveSettings.name}/set`,
               payload: `${JSON.stringify(valveSettings.payload)}`,
               retain: true
             }).then(() => {
-              console.log(`Service successfully called [domain: mqtt, service: publish, topic: zigbee2mqtt/${valveSettings.valveName}/set]`)
+              console.log(`Service successfully called [domain: mqtt, service: publish, topic: zigbee2mqtt/${valveSettings.name}/set]`)
             })
           }}></valve-settings>
         </ha-card>

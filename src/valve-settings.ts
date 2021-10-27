@@ -1,6 +1,5 @@
-import { html, css, LitElement, TemplateResult, nothing, render } from 'lit';
-import { customElement, property, queryAll, state } from 'lit/decorators.js';
-import { HomeAssistant } from 'custom-card-helpers';
+import { html, css, LitElement, TemplateResult, render } from 'lit';
+import { customElement, queryAll } from 'lit/decorators.js';
 
 import '@spectrum-web-components/button/sp-button.js';
 import '@spectrum-web-components/theme/sp-theme.js';
@@ -20,6 +19,11 @@ import { TabPanel } from '@spectrum-web-components/tabs';
 
 type ScheduleIndex = '1' | '2' | '3' | '4' | '5' | '6' | '7';
 type DayOfWeekIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7; // starting with Monday
+
+export interface SettingsChangeEvent {
+  payload: WeeklySchedule;
+  name: string;
+}
 
 interface ValveTransition {
   heatSetpoint: string; // temperature
@@ -94,8 +98,6 @@ export class ValveSettings extends LitElement {
   private tabs!: TabPanel[];
 
   private toasts: TemplateResult[] = [];
-
-  @property({ attribute: false }) public hass!: HomeAssistant;
 
   private renderWeekSchedule(): TemplateResult[] {
     const itemTemplates: TemplateResult[] = [];
@@ -258,12 +260,14 @@ export class ValveSettings extends LitElement {
           };
         }
 
+        const eventPayload: SettingsChangeEvent = {
+          payload: valveSettings,
+          name: valveMQTTName,
+        };
+
         const event = new CustomEvent('saved', {
           detail: {
-            message: JSON.stringify({
-              payload: valveSettings,
-              name: valveMQTTName,
-            }),
+            message: JSON.stringify(eventPayload),
           },
         });
         this.dispatchEvent(event);
