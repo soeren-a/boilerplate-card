@@ -131,7 +131,7 @@ export class BoilerplateCard extends LitElement {
           tabindex="0"
           .label=${`Settings: ${this.config.entity || "No Entity Defined"}`}
         >
-          <valve-settings @saved=${(event: CustomEvent) => {
+          <valve-settings @saved=${(event: CustomEvent): void => {
             const valveSettings = JSON.parse(event.detail.message) as Settings
 
             /*
