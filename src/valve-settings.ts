@@ -1,10 +1,9 @@
-import { html, css, LitElement, TemplateResult, render } from 'lit';
+/* eslint-disable @typescript-eslint/camelcase */
+
+import { html, css, LitElement, TemplateResult } from 'lit';
 import { customElement, queryAll } from 'lit/decorators.js';
 
 import '@spectrum-web-components/button/sp-button.js';
-import '@spectrum-web-components/theme/sp-theme.js';
-import '@spectrum-web-components/theme/src/themes.js';
-import '@spectrum-web-components/toast/sp-toast.js';
 import '@spectrum-web-components/sidenav/sp-sidenav.js';
 import '@spectrum-web-components/sidenav/sp-sidenav-heading.js';
 import '@spectrum-web-components/sidenav/sp-sidenav-item.js';
@@ -20,7 +19,7 @@ import { TabPanel } from '@spectrum-web-components/tabs';
 type ScheduleIndex = '1' | '2' | '3' | '4' | '5' | '6' | '7';
 type DayOfWeekIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7; // starting with Monday
 
-export interface SettingsChangeEvent {
+export interface Settings {
   payload: WeeklySchedule;
   name: string;
 }
@@ -38,7 +37,6 @@ interface ValveTiming {
 }
 
 interface WeeklySchedule {
-  // eslint-disable-next-line camelcase
   weekly_schedule: {
     [K in ScheduleIndex]: ValveTiming;
   };
@@ -48,17 +46,18 @@ interface WeeklySchedule {
 export class ValveSettings extends LitElement {
   static styles = css`
     sp-tab-panel {
-      margin-left: 30px;
+      margin-left: var(--spectrum-global-dimension-size-400);
       height: 100%;
+      width: 100%;
     }
 
     sp-divider {
-      margin-top: 10px;
+      margin-top: var(--spectrum-global-dimension-size-125);
     }
 
     sp-slider {
-      margin-left: 20px;
-      width: 150px;
+      margin-left: var(--spectrum-global-dimension-size-250);
+      width: var(--spectrum-global-dimension-size-1800);
     }
 
     sp-toast {
@@ -75,7 +74,7 @@ export class ValveSettings extends LitElement {
     }
 
     .values {
-      margin-left: 10px;
+      margin-left: var(--spectrum-global-dimension-size-125);
 
       display: flex;
       flex-direction: column;
@@ -84,11 +83,11 @@ export class ValveSettings extends LitElement {
     .entry {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: var(--spectrum-global-dimension-size-125);
     }
 
     .button {
-      margin: 20px 10px;
+      margin: var(--spectrum-global-dimension-size-250) var(--spectrum-global-dimension-size-125);
       display: flex;
       justify-content: flex-end;
     }
@@ -97,89 +96,47 @@ export class ValveSettings extends LitElement {
   @queryAll('sp-tab-panel')
   private tabs!: TabPanel[];
 
-  private toasts: TemplateResult[] = [];
+  private restoredSettings?: Map<string, WeeklySchedule>;
 
-  private renderWeekSchedule(): TemplateResult[] {
+  private renderWeekSchedule(valveId: string): TemplateResult[] {
     const itemTemplates: TemplateResult[] = [];
     const weekdays = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
-    weekdays.forEach(day => {
+    weekdays.forEach((day, index) => {
+      const restore = this.getSetting(valveId);
+      const daySchedule: ValveTiming = restore && restore.weekly_schedule[(index + 1).toString()];
+      const transitionList = daySchedule?.transitions || [];
+
       itemTemplates.push(
         html`
           <div>
             <h4 class="spectrum-Heading--subtitle1">${day}</h4>
             <div class="values">
-              <div class="entry">
-                <sp-number-field min="0" max="23" value="6"></sp-number-field>
-                :
-                <sp-number-field
-                  min="0"
-                  max="59"
-                  value="0"
-                  format-options='{ "minimumIntegerDigits": 2 }'
-                ></sp-number-field>
-                <sp-slider
-                  label="Temperatur"
-                  variant="ramp"
-                  value="20"
-                  min="15"
-                  max="30"
-                  format-options='{"style": "unit","unit": "degree","unitDisplay": "narrow"}'
-                ></sp-slider>
-              </div>
-              <div class="entry">
-                <sp-number-field min="0" max="23" value="12"></sp-number-field>
-                :
-                <sp-number-field
-                  min="0"
-                  max="59"
-                  value="0"
-                  format-options='{ "minimumIntegerDigits": 2 }'
-                ></sp-number-field>
-                <sp-slider
-                  label="Temperatur"
-                  variant="ramp"
-                  value="21"
-                  min="15"
-                  max="30"
-                  format-options='{"style": "unit","unit": "degree","unitDisplay": "narrow"}'
-                ></sp-slider>
-              </div>
-              <div class="entry">
-                <sp-number-field min="0" max="23" value="18"></sp-number-field>
-                :
-                <sp-number-field
-                  min="0"
-                  max="59"
-                  value="0"
-                  format-options='{ "minimumIntegerDigits": 2 }'
-                ></sp-number-field>
-                <sp-slider
-                  label="Temperatur"
-                  variant="ramp"
-                  value="21"
-                  min="15"
-                  max="30"
-                  format-options='{"style": "unit","unit": "degree","unitDisplay": "narrow"}'
-                ></sp-slider>
-              </div>
-              <div class="entry">
-                <sp-number-field min="0" max="23" value="23"></sp-number-field>
-                :
-                <sp-number-field
-                  min="0"
-                  max="59"
-                  value="0"
-                  format-options='{ "minimumIntegerDigits": 2 }'
-                ></sp-number-field>
-                <sp-slider
-                  label="Temperatur"
-                  variant="ramp"
-                  value="16"
-                  min="15"
-                  max="30"
-                  format-options='{"style": "unit","unit": "degree","unitDisplay": "narrow"}'
-                ></sp-slider>
-              </div>
+              ${[...Array(transitionList?.length || 4).keys()].map(i => {
+                return html`
+                  <div class="entry">
+                    <sp-number-field
+                      min="0"
+                      max="23"
+                      value=${Math.floor(transitionList[i]?.transitionTime / 60) || [6, 12, 18, 23][i]}
+                    ></sp-number-field>
+                    :
+                    <sp-number-field
+                      min="0"
+                      max="59"
+                      value=${transitionList[i]?.transitionTime % 60 || 0}
+                      format-options='{ "minimumIntegerDigits": 2 }'
+                    ></sp-number-field>
+                    <sp-slider
+                      label="Temperatur"
+                      variant="ramp"
+                      value=${transitionList[i]?.heatSetpoint || '20'}
+                      min="15"
+                      max="30"
+                      format-options='{"style": "unit","unit": "degree","unitDisplay": "narrow"}'
+                    ></sp-slider>
+                  </div>
+                `;
+              })}
             </div>
           </div>
           <sp-divider></sp-divider>
@@ -196,18 +153,32 @@ export class ValveSettings extends LitElement {
           <sp-tab label="Wohnzimmer Terrasse" value="thermostat_livingroom_1"></sp-tab>
           <sp-tab label="Wohnzimmer Esstisch" value="thermostat_livingroom_2"></sp-tab>
           <sp-tab label="Küche" value="thermostat_kitchen"></sp-tab>
+          <sp-tab label="Arbeitszimmer" value="thermostat_homeoffice"></sp-tab>
+          <sp-tab label="Kinderzimmer" value="thermostat_children_room"></sp-tab>
+          <sp-tab label="Bad" value="thermostat_bath"></sp-tab>
           <sp-tab-panel value="thermostat_livingroom_1"
-            ><div class="week">${this.renderWeekSchedule()}</div></sp-tab-panel
+            ><div class="week">${this.renderWeekSchedule('thermostat_livingroom_1')}</div></sp-tab-panel
           >
           <sp-tab-panel value="thermostat_livingroom_2"
-            ><div class="week">${this.renderWeekSchedule()}</div></sp-tab-panel
+            ><div class="week">${this.renderWeekSchedule('thermostat_livingroom_2')}</div></sp-tab-panel
           >
-          <sp-tab-panel value="thermostat_kitchen"><div class="week">${this.renderWeekSchedule()}</div></sp-tab-panel>
+          <sp-tab-panel value="thermostat_kitchen"
+            ><div class="week">${this.renderWeekSchedule('thermostat_kitchen')}</div></sp-tab-panel
+          >
+          <sp-tab-panel value="thermostat_homeoffice"
+            ><div class="week">${this.renderWeekSchedule('thermostat_homeoffice')}</div></sp-tab-panel
+          >
+          <sp-tab-panel value="thermostat_children_room"
+            ><div class="week">${this.renderWeekSchedule('thermostat_children_room')}</div></sp-tab-panel
+          >
+          <sp-tab-panel value="thermostat_bath"
+            ><div class="week">${this.renderWeekSchedule('thermostat_bath')}</div></sp-tab-panel
+          >
         </sp-tabs>
         <div class="button">
           <sp-button
             size="m"
-            @click=${() => {
+            @click=${(): void => {
               this.updateValveSettings();
             }}
             >Änderungen speichern</sp-button
@@ -215,18 +186,6 @@ export class ValveSettings extends LitElement {
         </div>
       </div>
     `;
-  }
-
-  private showSuccessToast(message: string): void {
-    const element = this.shadowRoot?.querySelector('#settings') as HTMLDivElement;
-    if (element) {
-      this.toasts.push(
-        html`
-          <sp-toast open variant="positive">${message}</sp-toast>
-        `,
-      );
-      render(this.toasts, element);
-    }
   }
 
   private updateValveSettings(): void {
@@ -260,7 +219,7 @@ export class ValveSettings extends LitElement {
           };
         }
 
-        const eventPayload: SettingsChangeEvent = {
+        const eventPayload: Settings = {
           payload: valveSettings,
           name: valveMQTTName,
         };
@@ -271,12 +230,17 @@ export class ValveSettings extends LitElement {
           },
         });
         this.dispatchEvent(event);
-        //this.showSuccessToast('Heizungseinstellung erfolgreich geändert');
+
+        localStorage.setItem(valveMQTTName, JSON.stringify(valveSettings));
       }
     });
   }
 
-  render() {
+  private getSetting(id: string): WeeklySchedule | undefined {
+    return JSON.parse(localStorage.getItem(id) || 'null') || undefined;
+  }
+
+  protected render(): TemplateResult {
     return html`
       <div class="main">${this.renderSettingsContent()}</div>
     `;

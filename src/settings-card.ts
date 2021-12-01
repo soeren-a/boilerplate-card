@@ -6,6 +6,7 @@ import {
   css,
   PropertyValues,
   CSSResultGroup,
+  render,
 } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import {
@@ -18,27 +19,16 @@ import {
   getLovelace,
 } from "custom-card-helpers"; // This is a community maintained npm module with common helper functions/types. https://github.com/custom-cards/custom-card-helpers
 
-import "@spectrum-web-components/button/sp-button.js";
 import "@spectrum-web-components/theme/sp-theme.js";
 import "@spectrum-web-components/theme/src/themes.js";
 import "@spectrum-web-components/toast/sp-toast.js";
-import "@spectrum-web-components/sidenav/sp-sidenav.js";
-import "@spectrum-web-components/sidenav/sp-sidenav-heading.js";
-import "@spectrum-web-components/sidenav/sp-sidenav-item.js";
-import '@spectrum-web-components/tabs/sp-tabs.js';
-import '@spectrum-web-components/tabs/sp-tab.js';
-import '@spectrum-web-components/tabs/sp-tab-panel.js';
-import '@spectrum-web-components/number-field/sp-number-field.js';
-import '@spectrum-web-components/divider/sp-divider.js';
-import '@spectrum-web-components/toast/sp-toast.js';
-import { NumberField } from '@spectrum-web-components/number-field';
 import './valve-settings'
 import "./editor";
 
 import type { SettingsCardConfig } from "./types";
 import { actionHandler } from "./action-handler-directive";
 import { localize } from "./localize/localize";
-import { SettingsChangeEvent } from "./valve-settings";
+import { Settings } from "./valve-settings";
 
 /* eslint no-console: 0 */
 
@@ -47,7 +37,7 @@ import { SettingsChangeEvent } from "./valve-settings";
 (window as any).customCards.push({
   type: "settings-card",
   name: "Settings Card",
-  description: "A template custom card for you to create something awesome",
+  description: "A card to set the weekly schedule for Tuya Valves (SEA802-Z01)",
 });
 
 @customElement("settings-card")
@@ -68,8 +58,18 @@ export class BoilerplateCard extends LitElement {
       :host {
         width: 100%;
       }
+
+      sp-toast {
+        position: fixed;
+        top: 75%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+      }
     `;
   }
+
+  private toasts: TemplateResult[] = [];
 
   // https://lit.dev/docs/components/properties/
   @property({ attribute: false }) public hass!: HomeAssistant;
@@ -88,7 +88,7 @@ export class BoilerplateCard extends LitElement {
     }
 
     this.config = {
-      name: "Settings",
+      name: "Heizung Tagesplan",
       ...config,
     };
   }
@@ -132,14 +132,23 @@ export class BoilerplateCard extends LitElement {
           .label=${`Settings: ${this.config.entity || "No Entity Defined"}`}
         >
           <valve-settings @saved=${(event: CustomEvent) => {
-            const valveSettings = JSON.parse(event.detail.message) as SettingsChangeEvent
+            const valveSettings = JSON.parse(event.detail.message) as Settings
+
+            /*
+              // test save as state
+              this.saveSettings(valveSettings).then(async saved => {
+              console.log(saved)
+              const result = await this.getSettings()
+              console.log(result)
+              // test end
+            })*/
 
             this.hass.callService('mqtt', 'publish', {
               topic: `zigbee2mqtt/${valveSettings.name}/set`,
-              payload: `${JSON.stringify(valveSettings.payload)}`,
-              retain: true
+              payload: `${JSON.stringify(valveSettings.payload)}`
             }).then(() => {
               console.log(`Service successfully called [domain: mqtt, service: publish, topic: zigbee2mqtt/${valveSettings.name}/set]`)
+              this.showSuccessToast('Änderungen gespeichert');
             })
           }}></valve-settings>
         </ha-card>
@@ -147,9 +156,46 @@ export class BoilerplateCard extends LitElement {
     `;
   }
 
+  private async getSettings(): Promise<Map<string, Settings>> {
+    console.log('getting schedule')
+    const { attributes } =  await (this.hass.callApi("GET", "states/valve.settings"));
+    console.log(attributes)
+    return JSON.parse(attributes || 'null') || new Map<string, Settings>()
+  }
+
+  private saveSettings(settings: Settings): Promise<boolean> {
+    console.log('saving schedule')
+    return this.hass.callApi("POST", "states/valve.settings", {
+        "state": "saved",
+        "attributes": {
+          [settings.name]: `${JSON.stringify(settings)}`
+        }
+    })
+  }
+
+  private deleteSettings(): Promise<boolean> {
+    console.log('deleting schedule')
+    return this.hass.callApi("POST", "states/valve.settings", {
+        "state": "empty",
+        "attributes": undefined
+    })
+  }
+
   private handleAction(ev: ActionHandlerEvent): void {
     if (this.hass && this.config && ev.detail.action) {
       handleAction(this, this.hass, this.config, ev.detail.action);
+    }
+  }
+
+  private showSuccessToast(message: string): void {
+    const element = this.shadowRoot?.querySelector('ha-card') as HTMLElement;
+    if (element) {
+      this.toasts.push(
+        html`
+          <sp-toast open variant="positive">${message}</sp-toast>
+        `,
+      );
+      render(this.toasts, element);
     }
   }
 
