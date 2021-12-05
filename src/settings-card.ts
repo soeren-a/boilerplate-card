@@ -40,6 +40,11 @@ import { Settings } from "./valve-settings";
   description: "A card to set the weekly schedule for Tuya Valves (SEA802-Z01)",
 });
 
+type StateSettings = {
+  state: string;
+  attributes: Record<string, Settings>;
+}
+
 @customElement("settings-card")
 export class BoilerplateCard extends LitElement {
   public static async getConfigElement(): Promise<LovelaceCardEditor> {
@@ -71,6 +76,9 @@ export class BoilerplateCard extends LitElement {
 
   private toasts: TemplateResult[] = [];
 
+  @property({type: Object})
+  private restoredSettings?: Record<string, Settings>
+
   // https://lit.dev/docs/components/properties/
   @property({ attribute: false }) public hass!: HomeAssistant;
 
@@ -99,13 +107,22 @@ export class BoilerplateCard extends LitElement {
     return 1;
   }
 
+  public connectedCallback(): void {
+    super.connectedCallback()
+
+    this.getSettings().then(settings => {
+      this.restoredSettings = settings?.attributes
+    })
+   
+  }
+
   // https://lit.dev/docs/components/lifecycle/#reactive-update-cycle-performing
   protected shouldUpdate(changedProps: PropertyValues): boolean {
     if (!this.config) {
       return false;
     }
 
-    return hasConfigOrEntityChanged(this, changedProps, false);
+    return hasConfigOrEntityChanged(this, changedProps, false) || changedProps.has('restoredSettings');
   }
 
   // https://lit.dev/docs/components/rendering/
@@ -131,46 +148,44 @@ export class BoilerplateCard extends LitElement {
           tabindex="0"
           .label=${`Settings: ${this.config.entity || "No Entity Defined"}`}
         >
-          <valve-settings @saved=${(event: CustomEvent): void => {
-            const valveSettings = JSON.parse(event.detail.message) as Settings
+          <valve-settings 
+            .settings=${this.restoredSettings}
+            @saved=${(event: CustomEvent): void => {
+              const valveSettings = JSON.parse(event.detail.message) as Settings
 
-            /*
-              // test save as state
-              this.saveSettings(valveSettings).then(async saved => {
-              console.log(saved)
-              const result = await this.getSettings()
-              console.log(result)
-              // test end
-            })*/
-
-            this.hass.callService('mqtt', 'publish', {
-              topic: `zigbee2mqtt/${valveSettings.name}/set`,
-              payload: `${JSON.stringify(valveSettings.payload)}`
-            }).then(() => {
-              console.log(`Service successfully called [domain: mqtt, service: publish, topic: zigbee2mqtt/${valveSettings.name}/set]`)
-              this.showSuccessToast('Änderungen gespeichert');
-            })
-          }}></valve-settings>
+              this.hass.callService('mqtt', 'publish', {
+                topic: `zigbee2mqtt/${valveSettings.name}/set`,
+                payload: `${JSON.stringify(valveSettings.payload)}`
+              }).then(() => {
+                this.saveSettings(valveSettings).then((success) =>{
+                  if (success){
+                    console.log(`Service successfully called [domain: mqtt, service: publish, topic: zigbee2mqtt/${valveSettings.name}/set]`);
+                    this.showToast('Änderungen gespeichert', 'positive');
+                  } else {
+                    this.showToast('Änderungen nicht gespeichert', 'error');
+                  }
+                })
+              })
+            }}>
+          </valve-settings>
         </ha-card>
-      </sp-theme>
-    `;
+      </sp-theme>`;
   }
 
-  private async getSettings(): Promise<Map<string, Settings>> {
+  private async getSettings(): Promise<StateSettings | undefined> {
     console.log('getting schedule')
-    const { attributes } =  await (this.hass.callApi("GET", "states/valve.settings"));
-    console.log(attributes)
-    return JSON.parse(attributes || 'null') || new Map<string, Settings>()
+    const settings =  await this.hass.callApi("GET", "states/valve.settings");
+    return settings as StateSettings
   }
 
-  private saveSettings(settings: Settings): Promise<boolean> {
+  private async saveSettings(settings: Settings): Promise<boolean> {
     console.log('saving schedule')
-    return this.hass.callApi("POST", "states/valve.settings", {
-        "state": "saved",
-        "attributes": {
-          [settings.name]: `${JSON.stringify(settings)}`
-        }
-    })
+    const storedSettings = await this.getSettings() || { state : 'saved', attributes: {} }
+    
+    storedSettings.attributes[settings.name] = settings
+    storedSettings.state = 'saved'
+
+    return this.hass.callApi("POST", "states/valve.settings", storedSettings)
   }
 
   private deleteSettings(): Promise<boolean> {
@@ -187,12 +202,12 @@ export class BoilerplateCard extends LitElement {
     }
   }
 
-  private showSuccessToast(message: string): void {
+  private showToast(message: string, variant: 'positive' | 'error'): void {
     const element = this.shadowRoot?.querySelector('ha-card') as HTMLElement;
     if (element) {
       this.toasts.push(
         html`
-          <sp-toast open variant="positive">${message}</sp-toast>
+          <sp-toast open variant=${variant}>${message}</sp-toast>
         `,
       );
       render(this.toasts, element);

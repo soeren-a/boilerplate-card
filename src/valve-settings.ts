@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/camelcase */
 
 import { html, css, LitElement, TemplateResult } from 'lit';
-import { customElement, queryAll } from 'lit/decorators.js';
+import { customElement, property, queryAll } from 'lit/decorators.js';
 
 import '@spectrum-web-components/button/sp-button.js';
 import '@spectrum-web-components/sidenav/sp-sidenav.js';
@@ -60,11 +60,8 @@ export class ValveSettings extends LitElement {
       width: var(--spectrum-global-dimension-size-1800);
     }
 
-    sp-toast {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+    #settings {
+      overflow: auto;
     }
 
     .week {
@@ -96,7 +93,8 @@ export class ValveSettings extends LitElement {
   @queryAll('sp-tab-panel')
   private tabs!: TabPanel[];
 
-  private restoredSettings?: Map<string, WeeklySchedule>;
+  @property({type: Object, attribute: false})
+  private settings?: Record<string, Settings>
 
   private renderWeekSchedule(valveId: string): TemplateResult[] {
     const itemTemplates: TemplateResult[] = [];
@@ -230,14 +228,13 @@ export class ValveSettings extends LitElement {
           },
         });
         this.dispatchEvent(event);
-
-        localStorage.setItem(valveMQTTName, JSON.stringify(valveSettings));
       }
     });
   }
 
   private getSetting(id: string): WeeklySchedule | undefined {
-    return JSON.parse(localStorage.getItem(id) || 'null') || undefined;
+    const setting = this.settings && this.settings[id]
+    return setting?.payload
   }
 
   protected render(): TemplateResult {
