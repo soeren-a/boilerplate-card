@@ -41,7 +41,7 @@ import { Settings } from "./valve-settings";
 });
 
 type StateSettings = {
-  state: string;
+  date?: string;
   attributes: Record<string, Settings>;
 }
 
@@ -108,11 +108,11 @@ export class BoilerplateCard extends LitElement {
   }
 
   public connectedCallback(): void {
-    super.connectedCallback()
+    super.connectedCallback();
 
     this.getSettings().then(settings => {
-      this.restoredSettings = settings?.attributes
-    })
+      this.restoredSettings = settings?.attributes;
+    });
    
   }
 
@@ -122,7 +122,7 @@ export class BoilerplateCard extends LitElement {
       return false;
     }
 
-    return hasConfigOrEntityChanged(this, changedProps, false) || changedProps.has('restoredSettings');
+    return hasConfigOrEntityChanged(this, changedProps, false) || changedProps.has('restoredSettings');
   }
 
   // https://lit.dev/docs/components/rendering/
@@ -173,27 +173,34 @@ export class BoilerplateCard extends LitElement {
   }
 
   private async getSettings(): Promise<StateSettings | undefined> {
-    console.log('getting schedule')
-    const settings =  await this.hass.callApi("GET", "states/valve.settings");
-    return settings as StateSettings
+    console.log('getting schedule');
+    // const settings =  await this.hass.callApi("GET", "states/valve.settings");
+    const settings = await this.hass.callWS({ type: 'saver/get_json' });
+    return settings as StateSettings;
   }
 
   private async saveSettings(settings: Settings): Promise<boolean> {
     console.log('saving schedule')
-    const storedSettings = await this.getSettings() || { state : 'saved', attributes: {} }
+    const storedSettings: StateSettings = await this.hass.callWS({ type: 'saver/get_json' }) || { attributes: {} };
     
-    storedSettings.attributes[settings.name] = settings
-    storedSettings.state = 'saved'
+    storedSettings.attributes[settings.name] = settings;
+    storedSettings.date =  new Date().toString();
 
-    return this.hass.callApi("POST", "states/valve.settings", storedSettings)
+    await this.hass.sendWS({ type: 'saver/set_json', data: storedSettings });
+
+    //return this.hass.callApi("POST", "states/valve.settings", storedSettings)
+    return true;
   }
 
-  private deleteSettings(): Promise<boolean> {
+  private async deleteSettings(): Promise<boolean> {
     console.log('deleting schedule')
-    return this.hass.callApi("POST", "states/valve.settings", {
+    /*return this.hass.callApi("POST", "states/valve.settings", {
         "state": "empty",
         "attributes": undefined
-    })
+    })*/
+    await this.hass.sendWS({ type: 'saver/set_json', data: {} });
+
+    return true;
   }
 
   private handleAction(ev: ActionHandlerEvent): void {

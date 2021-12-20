@@ -13,17 +13,17 @@
   "module": "settings-card.js",
   "author": "Soeren Ammedick",
   "dependencies": {
-    "@spectrum-web-components/button": "^0.14.8",
-    "@spectrum-web-components/divider": "^0.2.8",
-    "@spectrum-web-components/number-field": "^0.1.10",
-    "@spectrum-web-components/sidenav": "^0.10.9",
-    "@spectrum-web-components/slider": "^0.10.10",
-    "@spectrum-web-components/tabs": "^0.6.10",
-    "@spectrum-web-components/theme": "^0.8.14",
-    "@spectrum-web-components/toast": "^0.8.17",
+    "@spectrum-web-components/button": "^0.16.1",
+    "@spectrum-web-components/divider": "^0.4.1",
+    "@spectrum-web-components/number-field": "^0.3.1",
+    "@spectrum-web-components/sidenav": "^0.12.1",
+    "@spectrum-web-components/slider": "^0.12.1",
+    "@spectrum-web-components/tabs": "^0.8.1",
+    "@spectrum-web-components/theme": "^0.9.1",
+    "@spectrum-web-components/toast": "^0.10.1",
     "custom-card-helpers": "^1.7.2",
     "home-assistant-js-websocket": "^4.5.0",
-    "lit": "^2.0.0-rc.2"
+    "lit": "^2.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.15.0",
