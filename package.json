@@ -18,6 +18,7 @@
     "@spectrum-web-components/number-field": "^0.3.1",
     "@spectrum-web-components/sidenav": "^0.12.1",
     "@spectrum-web-components/slider": "^0.12.1",
+    "@spectrum-web-components/switch": "^0.9.1",
     "@spectrum-web-components/tabs": "^0.8.1",
     "@spectrum-web-components/theme": "^0.9.1",
     "@spectrum-web-components/toast": "^0.10.1",

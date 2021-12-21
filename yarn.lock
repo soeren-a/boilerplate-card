@@ -358,6 +358,17 @@
     "@spectrum-web-components/shared" "^0.13.1"
     tslib "^2.0.0"
 
+"@spectrum-web-components/checkbox@^0.12.1":
+  version "0.12.1"
+  resolved "https://registry.yarnpkg.com/@spectrum-web-components/checkbox/-/checkbox-0.12.1.tgz#811e759d402a7d9356a42ccbc58161682be95f2d"
+  integrity sha512-x6yJhtr4fTyH3/v/lc9VyIOS/kEzDaETMLtYOpDMLTS5m58zDu6WkQEIZAAEXB3eFQUxzmD44iA6pVyOnleESQ==
+  dependencies:
+    "@spectrum-web-components/base" "^0.5.1"
+    "@spectrum-web-components/icon" "^0.11.1"
+    "@spectrum-web-components/icons-ui" "^0.8.1"
+    "@spectrum-web-components/shared" "^0.13.1"
+    tslib "^2.0.0"
+
 "@spectrum-web-components/divider@^0.4.1":
   version "0.4.1"
   resolved "https://registry.yarnpkg.com/@spectrum-web-components/divider/-/divider-0.4.1.tgz#5b9794ad30824c215a46de0c5836323afb8e64a9"
@@ -472,6 +483,15 @@
   integrity sha512-HbfY0FDQznzCDH2fu3hysMdnUx6oWqDZSzne2+AqrHCPkeg13Xn2QFDApji4D+2E5tDtCtOtpcJSAI7MZDfyjQ==
   dependencies:
     "@spectrum-web-components/base" "^0.5.1"
+
+"@spectrum-web-components/switch@^0.9.1":
+  version "0.9.1"
+  resolved "https://registry.yarnpkg.com/@spectrum-web-components/switch/-/switch-0.9.1.tgz#7111d7af21bd21d8cb09e4a5b08090785e67dfa9"
+  integrity sha512-1A2s9IJcmWVf1DZcXL191/qJ2j3GT2Q91+K8srrgt2neyi+sdc3X5D7bxcKNulEgfH/BLT/AyqH6rN2ihRTRAQ==
+  dependencies:
+    "@spectrum-web-components/base" "^0.5.1"
+    "@spectrum-web-components/checkbox" "^0.12.1"
+    tslib "^2.0.0"
 
 "@spectrum-web-components/tabs@^0.8.1":
   version "0.8.1"

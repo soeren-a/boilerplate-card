@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/camelcase */
 
-import { html, css, LitElement, TemplateResult } from 'lit';
+import { html, css, LitElement, TemplateResult, nothing } from 'lit';
 import { customElement, property, queryAll } from 'lit/decorators.js';
 
 import '@spectrum-web-components/button/sp-button.js';
@@ -13,6 +13,7 @@ import '@spectrum-web-components/tabs/sp-tab-panel.js';
 import '@spectrum-web-components/number-field/sp-number-field.js';
 import '@spectrum-web-components/divider/sp-divider.js';
 import '@spectrum-web-components/slider/sp-slider.js';
+import '@spectrum-web-components/switch/sp-switch.js';
 
 import { TabPanel } from '@spectrum-web-components/tabs';
 
@@ -93,8 +94,8 @@ export class ValveSettings extends LitElement {
   @queryAll('sp-tab-panel')
   private tabs!: TabPanel[];
 
-  @property({type: Object, attribute: false})
-  private settings?: Record<string, Settings>
+  @property({ type: Object, attribute: false })
+  private settings?: Record<string, Settings>;
 
   private renderWeekSchedule(valveId: string): TemplateResult[] {
     const itemTemplates: TemplateResult[] = [];
@@ -103,43 +104,61 @@ export class ValveSettings extends LitElement {
       const restore = this.getSetting(valveId);
       const daySchedule: ValveTiming = restore && restore.weekly_schedule[(index + 1).toString()];
       const transitionList = daySchedule?.transitions || [];
+      const currentTabPanel = this.shadowRoot?.querySelector(`sp-tab-panel[value="${valveId}"]`);
+      const switchMoToTh = currentTabPanel?.querySelector('sp-switch');
 
-      itemTemplates.push(
-        html`
-          <div>
-            <h4 class="spectrum-Heading--subtitle1">${day}</h4>
-            <div class="values">
-              ${[...Array(transitionList?.length || 4).keys()].map(i => {
-                return html`
-                  <div class="entry">
-                    <sp-number-field
-                      min="0"
-                      max="23"
-                      value=${Math.floor(transitionList[i]?.transitionTime / 60) || [6, 12, 18, 23][i]}
-                    ></sp-number-field>
-                    :
-                    <sp-number-field
-                      min="0"
-                      max="59"
-                      value=${transitionList[i]?.transitionTime % 60 || 0}
-                      format-options='{ "minimumIntegerDigits": 2 }'
-                    ></sp-number-field>
-                    <sp-slider
-                      label="Temperatur"
-                      variant="ramp"
-                      value=${transitionList[i]?.heatSetpoint || '20'}
-                      min="15"
-                      max="30"
-                      format-options='{"style": "unit","unit": "degree","unitDisplay": "narrow"}'
-                    ></sp-slider>
-                  </div>
-                `;
-              })}
+      if (index === 0 || !switchMoToTh?.checked || (!!switchMoToTh?.checked && index > 3)) {
+        itemTemplates.push(
+          html`
+            <div>
+              <h4 class="spectrum-Heading--subtitle1">
+                ${!!switchMoToTh?.checked && index === 0 ? 'Montag - Donnerstag' : day}
+              </h4>
+              ${index === 0
+                ? html`
+                    <sp-switch
+                      @click=${(event): void => {
+                        event.target.checked = !event.target.checked;
+                        this.requestUpdate();
+                      }}
+                      >Montag - Donnerstag
+                    </sp-switch>
+                  `
+                : nothing}
+
+              <div class="values">
+                ${[...Array(transitionList?.length || 4).keys()].map(i => {
+                  return html`
+                    <div class="entry">
+                      <sp-number-field
+                        min="0"
+                        max="23"
+                        value=${Math.floor(transitionList[i]?.transitionTime / 60) || [6, 12, 18, 23][i]}
+                      ></sp-number-field>
+                      :
+                      <sp-number-field
+                        min="0"
+                        max="59"
+                        value=${transitionList[i]?.transitionTime % 60 || 0}
+                        format-options='{ "minimumIntegerDigits": 2 }'
+                      ></sp-number-field>
+                      <sp-slider
+                        label="Temperatur"
+                        variant="ramp"
+                        value=${transitionList[i]?.heatSetpoint || '20'}
+                        min="15"
+                        max="30"
+                        format-options='{"style": "unit","unit": "degree","unitDisplay": "narrow"}'
+                      ></sp-slider>
+                    </div>
+                  `;
+                })}
+              </div>
             </div>
-          </div>
-          <sp-divider></sp-divider>
-        `,
-      );
+            <sp-divider></sp-divider>
+          `,
+        );
+      }
     });
     return itemTemplates;
   }
@@ -192,15 +211,17 @@ export class ValveSettings extends LitElement {
       if (tab.selected) {
         const times = tab.querySelectorAll('sp-number-field');
         const tempSliders = tab.querySelectorAll('sp-slider');
+        const switchMoToTh = tab.querySelector('sp-switch');
         const valveMQTTName = tab.value;
+        const indexAdjustment = switchMoToTh?.checked ? 3 : 0;
 
         for (let settingIndex = 0; settingIndex < 7; settingIndex += 1) {
           // iterate over the entries
           const transitions: ValveTransition[] = [];
           const numoftrans = 4;
           const elementsCount = numoftrans * 2; // *2 because we have one element for the hour and one for minutes
-          const startIndexNF = settingIndex * elementsCount;
-          const startIndexSlider = settingIndex * numoftrans;
+          const startIndexNF = Math.max(settingIndex - indexAdjustment, 0) * elementsCount;
+          const startIndexSlider = Math.max(settingIndex - indexAdjustment, 0) * numoftrans;
           for (let i = startIndexNF, j = startIndexSlider; i < startIndexNF + elementsCount; i += 2, j += 1) {
             const hour = times[i].value;
             const minutes = times[i + 1].value;
@@ -233,8 +254,8 @@ export class ValveSettings extends LitElement {
   }
 
   private getSetting(id: string): WeeklySchedule | undefined {
-    const setting = this.settings && this.settings[id]
-    return setting?.payload
+    const setting = this.settings && this.settings[id];
+    return setting?.payload;
   }
 
   protected render(): TemplateResult {
