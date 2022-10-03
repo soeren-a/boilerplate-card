@@ -1,24 +1,20 @@
 /* eslint-disable @typescript-eslint/camelcase */
 
-import { html, css, LitElement, TemplateResult, nothing } from 'lit';
-import { customElement, property, queryAll } from 'lit/decorators.js';
+import { html, css, LitElement, TemplateResult, nothing, PropertyValues } from 'lit';
+import { customElement, property, query, queryAll } from 'lit/decorators.js';
 
-import '@spectrum-web-components/button/sp-button.js';
-import '@spectrum-web-components/sidenav/sp-sidenav.js';
-import '@spectrum-web-components/sidenav/sp-sidenav-heading.js';
-import '@spectrum-web-components/sidenav/sp-sidenav-item.js';
-import '@spectrum-web-components/tabs/sp-tabs.js';
-import '@spectrum-web-components/tabs/sp-tab.js';
-import '@spectrum-web-components/tabs/sp-tab-panel.js';
 import '@spectrum-web-components/number-field/sp-number-field.js';
 import '@spectrum-web-components/divider/sp-divider.js';
 import '@spectrum-web-components/slider/sp-slider.js';
-import '@spectrum-web-components/switch/sp-switch.js';
 
-import { TabPanel } from '@spectrum-web-components/tabs';
+import { Tab } from '@material/mwc-tab/mwc-tab.js';
+import { TabBar } from '@material/mwc-tab-bar/mwc-tab-bar.js';
+import { Switch } from '@material/mwc-switch/mwc-switch.js';
 
 type ScheduleIndex = '1' | '2' | '3' | '4' | '5' | '6' | '7';
-type DayOfWeekIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7; // starting with Monday
+type DayOfWeekIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+const MondayToSundayIndex: DayOfWeekIndex[] = [6, 7, 1, 2, 3, 4, 5];
 
 export interface Settings {
   payload: WeeklySchedule;
@@ -46,12 +42,6 @@ interface WeeklySchedule {
 @customElement('valve-settings')
 export class ValveSettings extends LitElement {
   static styles = css`
-    sp-tab-panel {
-      margin-left: var(--spectrum-global-dimension-size-400);
-      height: 100%;
-      width: 100%;
-    }
-
     sp-divider {
       margin-top: var(--spectrum-global-dimension-size-125);
     }
@@ -61,14 +51,17 @@ export class ValveSettings extends LitElement {
       width: var(--spectrum-global-dimension-size-1800);
     }
 
-    #settings {
-      overflow: auto;
+    .content {
+      margin-left: 12px;
+      margin-right: 12px;
+      height: 100%;
     }
 
-    .week {
+    .schedule {
       display: flex;
       flex-direction: column;
       width: 100%;
+      margin-left: 12px;
     }
 
     .values {
@@ -91,38 +84,51 @@ export class ValveSettings extends LitElement {
     }
   `;
 
-  @queryAll('sp-tab-panel')
-  private tabs!: TabPanel[];
+  @queryAll('mwc-tab')
+  private tabs!: Tab[];
+
+  @query('mwc-tab-bar')
+  private tabBar!: TabBar;
 
   @property({ type: Object, attribute: false })
   private settings?: Record<string, Settings>;
 
-  private renderWeekSchedule(valveId: string): TemplateResult[] {
+  @property({ type: Number, attribute: false })
+  private valveIndex = -1;
+
+  private renderValveWeekSchedule(): TemplateResult[] {
+    if (this.valveIndex < 0) return [];
+
+    const valveId = this.tabs[this.valveIndex]?.id;
+    console.log(`${this.valveIndex}, ${valveId}`);
+    if (!valveId) return [];
+
     const itemTemplates: TemplateResult[] = [];
     const weekdays = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
     weekdays.forEach((day, index) => {
       const restore = this.getSetting(valveId);
       const daySchedule: ValveTiming = restore && restore.weekly_schedule[(index + 1).toString()];
       const transitionList = daySchedule?.transitions || [];
-      const currentTabPanel = this.shadowRoot?.querySelector(`sp-tab-panel[value="${valveId}"]`);
-      const switchMoToTh = currentTabPanel?.querySelector('sp-switch');
+      const switchMoToTh = this.querySelector('mwc-switch') as Switch;
 
-      if (index === 0 || !switchMoToTh?.checked || (!!switchMoToTh?.checked && index > 3)) {
+      if (index === 0 || !switchMoToTh?.selected || (!!switchMoToTh?.selected && index > 3)) {
         itemTemplates.push(
           html`
             <div>
               <h4 class="spectrum-Heading--subtitle1">
-                ${!!switchMoToTh?.checked && index === 0 ? 'Montag - Donnerstag' : day}
+                ${!!switchMoToTh?.selected && index === 0 ? 'Montag - Donnerstag' : day}
               </h4>
               ${index === 0
                 ? html`
-                    <sp-switch
-                      @click=${(event): void => {
-                        event.target.checked = !event.target.checked;
-                        this.requestUpdate();
-                      }}
-                      >Montag - Donnerstag
-                    </sp-switch>
+                    <mwc-formfield label="Montag - Donnerstag">
+                      <mwc-switch
+                        @click=${(event): void => {
+                          event.target.selected = !event.target.selected;
+                          console.log(event.target.selected);
+                          this.requestUpdate();
+                        }}
+                      ></mwc-switch>
+                    </mwc-formfield>
                   `
                 : nothing}
 
@@ -163,57 +169,28 @@ export class ValveSettings extends LitElement {
     return itemTemplates;
   }
 
-  private renderSettingsContent(): TemplateResult {
+  private renderTabBar(): TemplateResult {
     return html`
-      <div id="settings">
-        <sp-tabs selected="thermostat_livingroom_1">
-          <sp-tab label="Wohnzimmer Terrasse" value="thermostat_livingroom_1"></sp-tab>
-          <sp-tab label="Wohnzimmer Esstisch" value="thermostat_livingroom_2"></sp-tab>
-          <sp-tab label="Küche" value="thermostat_kitchen"></sp-tab>
-          <sp-tab label="Arbeitszimmer" value="thermostat_homeoffice"></sp-tab>
-          <sp-tab label="Kinderzimmer" value="thermostat_children_room"></sp-tab>
-          <sp-tab label="Bad" value="thermostat_bath"></sp-tab>
-          <sp-tab-panel value="thermostat_livingroom_1"
-            ><div class="week">${this.renderWeekSchedule('thermostat_livingroom_1')}</div></sp-tab-panel
-          >
-          <sp-tab-panel value="thermostat_livingroom_2"
-            ><div class="week">${this.renderWeekSchedule('thermostat_livingroom_2')}</div></sp-tab-panel
-          >
-          <sp-tab-panel value="thermostat_kitchen"
-            ><div class="week">${this.renderWeekSchedule('thermostat_kitchen')}</div></sp-tab-panel
-          >
-          <sp-tab-panel value="thermostat_homeoffice"
-            ><div class="week">${this.renderWeekSchedule('thermostat_homeoffice')}</div></sp-tab-panel
-          >
-          <sp-tab-panel value="thermostat_children_room"
-            ><div class="week">${this.renderWeekSchedule('thermostat_children_room')}</div></sp-tab-panel
-          >
-          <sp-tab-panel value="thermostat_bath"
-            ><div class="week">${this.renderWeekSchedule('thermostat_bath')}</div></sp-tab-panel
-          >
-        </sp-tabs>
-        <div class="button">
-          <sp-button
-            size="m"
-            @click=${(): void => {
-              this.updateValveSettings();
-            }}
-            >Änderungen speichern</sp-button
-          >
-        </div>
-      </div>
+      <mwc-tab-bar>
+        <mwc-tab label="Wohnzimmer Terrasse" id="thermostat_livingroom_1"> </mwc-tab>
+        <mwc-tab label="Wohnzimmer Esstisch" id="thermostat_livingroom_2"> </mwc-tab>
+        <mwc-tab label="Küche" id="thermostat_kitchen"> </mwc-tab>
+        <mwc-tab label="Arbeitszimmer" id="thermostat_homeoffice"> </mwc-tab>
+        <mwc-tab label="Kinderzimmer" id="thermostat_children_room"> </mwc-tab>
+        <mwc-tab label="Bad" id="thermostat_bath"> </mwc-tab>
+      </mwc-tab-bar>
     `;
   }
 
   private updateValveSettings(): void {
     const valveSettings: WeeklySchedule = { weekly_schedule: {} } as WeeklySchedule;
     this.tabs.forEach(tab => {
-      if (tab.selected) {
+      if (tab.active) {
         const times = tab.querySelectorAll('sp-number-field');
         const tempSliders = tab.querySelectorAll('sp-slider');
-        const switchMoToTh = tab.querySelector('sp-switch');
-        const valveMQTTName = tab.value;
-        const indexAdjustment = switchMoToTh?.checked ? 3 : 0;
+        const switchMoToTh = tab.querySelector('mwc-switch') as Switch;
+        const valveMQTTName = tab.id;
+        const indexAdjustment = switchMoToTh?.selected ? 3 : 0;
 
         for (let settingIndex = 0; settingIndex < 7; settingIndex += 1) {
           // iterate over the entries
@@ -229,8 +206,8 @@ export class ValveSettings extends LitElement {
             transitions.push({ heatSetpoint: temp.toString(), transitionTime: hour * 60 + minutes });
           }
 
-          const dayofweek = (settingIndex + 1) as DayOfWeekIndex;
-          valveSettings.weekly_schedule[dayofweek.toString() as ScheduleIndex] = {
+          const dayofweek = MondayToSundayIndex[settingIndex];
+          valveSettings.weekly_schedule[(settingIndex + 1).toString() as ScheduleIndex] = {
             dayofweek,
             mode: 1,
             numoftrans,
@@ -260,7 +237,28 @@ export class ValveSettings extends LitElement {
 
   protected render(): TemplateResult {
     return html`
-      <div class="main">${this.renderSettingsContent()}</div>
+      <div class="content">
+        <span>${this.renderTabBar()}</span>
+        <div class="schedule">${this.renderValveWeekSchedule()}</div>
+        <div class="button">
+          <mwc-button
+            raised
+            label="Änderungen speichern"
+            @click=${(): void => {
+              this.updateValveSettings();
+            }}
+          ></mwc-button>
+        </div>
+      </div>
     `;
+  }
+
+  protected firstUpdated(_changedProperties: PropertyValues): void {
+    super.firstUpdated(_changedProperties);
+
+    this.tabBar.addEventListener('MDCTabBar:activated', e => {
+      const { index } = (e as CustomEvent).detail;
+      this.valveIndex = index;
+    });
   }
 }
