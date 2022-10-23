@@ -1,14 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {
-  LitElement,
-  html,
-  TemplateResult,
-  css,
-  PropertyValues,
-  CSSResultGroup,
-  render,
-} from "lit";
-import { customElement, property, state } from "lit/decorators";
+import { LitElement, html, TemplateResult, css, PropertyValues, CSSResultGroup } from 'lit';
+import { customElement, property, state } from 'lit/decorators';
 import {
   HomeAssistant,
   hasConfigOrEntityChanged,
@@ -17,41 +9,36 @@ import {
   handleAction,
   LovelaceCardEditor,
   getLovelace,
-} from "custom-card-helpers"; // This is a community maintained npm module with common helper functions/types. https://github.com/custom-cards/custom-card-helpers
+} from 'custom-card-helpers'; // This is a community maintained npm module with common helper functions/types. https://github.com/custom-cards/custom-card-helpers
 
-import "@spectrum-web-components/theme/sp-theme.js";
-import "@spectrum-web-components/theme/src/themes.js";
-import "@spectrum-web-components/toast/sp-toast.js";
-import './valve-settings'
-import "./editor";
+import type { SettingsCardConfig } from './types';
+import { actionHandler } from './action-handler-directive';
+import { localize } from './localize/localize';
+import { Settings } from './valve-settings';
 
-import type { SettingsCardConfig } from "./types";
-import { actionHandler } from "./action-handler-directive";
-import { localize } from "./localize/localize";
-import { Settings } from "./valve-settings";
-
-/* eslint no-console: 0 */
+import './valve-settings';
 
 // This puts your card into the UI card picker dialog
 (window as any).customCards = (window as any).customCards || [];
 (window as any).customCards.push({
-  type: "settings-card",
-  name: "Settings Card",
-  description: "A card to set the weekly schedule for Tuya Valves (SEA802-Z01)",
+  type: 'settings-card-dev',
+  name: 'Settings Card',
+  description: 'A card to set the weekly schedule for Tuya Valves',
 });
 
 type StateSettings = {
   date?: string;
   attributes: Record<string, Settings>;
-}
+};
 
-@customElement("settings-card")
+@customElement('settings-card-dev')
 export class BoilerplateCard extends LitElement {
   public static async getConfigElement(): Promise<LovelaceCardEditor> {
-    return document.createElement("settings-card-editor");
+    await import('./editor');
+    return document.createElement('settings-card-editor');
   }
 
-  public static getStubConfig(): object {
+  public static getStubConfig(): Record<string, unknown> {
     return {
       isPanel: true,
     };
@@ -76,8 +63,8 @@ export class BoilerplateCard extends LitElement {
 
   private toasts: TemplateResult[] = [];
 
-  @property({type: Object})
-  private restoredSettings?: Record<string, Settings>
+  @property({ type: Object })
+  private restoredSettings?: Record<string, Settings>;
 
   // https://lit.dev/docs/components/properties/
   @property({ attribute: false }) public hass!: HomeAssistant;
@@ -88,7 +75,7 @@ export class BoilerplateCard extends LitElement {
   public setConfig(config: SettingsCardConfig): void {
     // TODO Check for required fields and that they are of the proper format
     if (!config) {
-      throw new Error(localize("common.invalid_configuration"));
+      throw new Error(localize('common.invalid_configuration'));
     }
 
     if (config.test_gui) {
@@ -96,7 +83,7 @@ export class BoilerplateCard extends LitElement {
     }
 
     this.config = {
-      name: "Heizung Tagesplan",
+      name: 'Heizung Tagesplan',
       ...config,
     };
   }
@@ -110,10 +97,16 @@ export class BoilerplateCard extends LitElement {
   public connectedCallback(): void {
     super.connectedCallback();
 
-    this.getSettings().then(settings => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.type = 'text/css';
+    link.crossOrigin = 'anonymous';
+    link.href = 'https://fonts.googleapis.com/css?family=Material+Icons&display=block';
+    document.head.appendChild(link);
+
+    this.getSettings().then((settings) => {
       this.restoredSettings = settings?.attributes;
     });
-   
   }
 
   // https://lit.dev/docs/components/lifecycle/#reactive-update-cycle-performing
@@ -129,47 +122,51 @@ export class BoilerplateCard extends LitElement {
   protected render(): TemplateResult | void {
     // TODO Check for stateObj or other necessary things and render a warning if missing
     if (this.config.show_warning) {
-      return this.showWarning(localize("common.show_warning"));
+      return this.showWarning(localize('common.show_warning'));
     }
 
     if (this.config.show_error) {
-      return this.showError(localize("common.show_error"));
+      return this.showError(localize('common.show_error'));
     }
 
     return html`
-      <sp-theme color="light" scale="medium">
-        <ha-card
-          .header=${this.config.name}
-          @action=${this.handleAction}
-          .actionHandler=${actionHandler({
-            hasHold: hasAction(this.config.hold_action),
-            hasDoubleClick: hasAction(this.config.double_tap_action),
-          })}
-          tabindex="0"
-          .label=${`Settings: ${this.config.entity || "No Entity Defined"}`}
-        >
-          <valve-settings 
-            .settings=${this.restoredSettings}
-            @saved=${(event: CustomEvent): void => {
-              const valveSettings = JSON.parse(event.detail.message) as Settings
+      <ha-card
+        .header=${this.config.name}
+        @action=${this.handleAction}
+        .actionHandler=${actionHandler({
+          hasHold: hasAction(this.config.hold_action),
+          hasDoubleClick: hasAction(this.config.double_tap_action),
+        })}
+        tabindex="0"
+        .label=${`Settings: ${this.config.entity || 'No Entity Defined'}`}
+      >
+        <valve-settings
+          .settings=${this.restoredSettings}
+          @saved=${(event: CustomEvent): void => {
+            const valveSettings = JSON.parse(event.detail.message) as Settings;
 
-              this.hass.callService('mqtt', 'publish', {
+            this.hass
+              .callService('mqtt', 'publish', {
                 topic: `zigbee2mqtt/${valveSettings.name}/set`,
-                payload: `${JSON.stringify(valveSettings.payload)}`
-              }).then(() => {
-                this.saveSettings(valveSettings).then((success) =>{
-                  if (success){
-                    console.log(`Service successfully called [domain: mqtt, service: publish, topic: zigbee2mqtt/${valveSettings.name}/set]`);
+                payload: `${JSON.stringify(valveSettings.payload)}`,
+              })
+              .then(() => {
+                this.saveSettings(valveSettings).then((success) => {
+                  if (success) {
+                    console.log(
+                      `Service successfully called [domain: mqtt, service: publish, topic: zigbee2mqtt/${valveSettings.name}/set]`,
+                    );
                     this.showToast('Änderungen gespeichert', 'positive');
                   } else {
                     this.showToast('Änderungen nicht gespeichert', 'error');
                   }
-                })
-              })
-            }}>
-          </valve-settings>
-        </ha-card>
-      </sp-theme>`;
+                });
+              });
+          }}
+        >
+        </valve-settings>
+      </ha-card>
+    `;
   }
 
   private async getSettings(): Promise<StateSettings | undefined> {
@@ -180,11 +177,11 @@ export class BoilerplateCard extends LitElement {
   }
 
   private async saveSettings(settings: Settings): Promise<boolean> {
-    console.log('saving schedule')
-    const storedSettings: StateSettings = await this.hass.callWS({ type: 'saver/get_json' }) || { attributes: {} };
-    
+    console.log('saving schedule');
+    const storedSettings: StateSettings = (await this.hass.callWS({ type: 'saver/get_json' })) || { attributes: {} };
+
     storedSettings.attributes[settings.name] = settings;
-    storedSettings.date =  new Date().toString();
+    storedSettings.date = new Date().toString();
 
     await this.hass.sendWS({ type: 'saver/set_json', data: storedSettings });
 
@@ -193,7 +190,7 @@ export class BoilerplateCard extends LitElement {
   }
 
   private async deleteSettings(): Promise<boolean> {
-    console.log('deleting schedule')
+    console.log('deleting schedule');
     /*return this.hass.callApi("POST", "states/valve.settings", {
         "state": "empty",
         "attributes": undefined
@@ -209,8 +206,9 @@ export class BoilerplateCard extends LitElement {
     }
   }
 
-  private showToast(message: string, variant: 'positive' | 'error'): void {
-    const element = this.shadowRoot?.querySelector('ha-card') as HTMLElement;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private showToast(_message: string, _variant: 'positive' | 'error'): void {
+    /*const element = this.shadowRoot?.querySelector('ha-card') as HTMLElement;
     if (element) {
       this.toasts.push(
         html`
@@ -218,7 +216,7 @@ export class BoilerplateCard extends LitElement {
         `,
       );
       render(this.toasts, element);
-    }
+    }*/
   }
 
   private showWarning(warning: string): TemplateResult {
@@ -226,9 +224,9 @@ export class BoilerplateCard extends LitElement {
   }
 
   private showError(error: string): TemplateResult {
-    const errorCard = document.createElement("hui-error-card");
+    const errorCard = document.createElement('hui-error-card');
     errorCard.setConfig({
-      type: "error",
+      type: 'error',
       error,
       origConfig: this.config,
     });

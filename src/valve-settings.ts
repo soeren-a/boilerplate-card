@@ -1,15 +1,20 @@
-/* eslint-disable @typescript-eslint/camelcase */
-
 import { html, css, LitElement, TemplateResult, nothing, PropertyValues } from 'lit';
 import { customElement, property, query, queryAll } from 'lit/decorators.js';
 
-import '@spectrum-web-components/number-field/sp-number-field.js';
-import '@spectrum-web-components/divider/sp-divider.js';
-import '@spectrum-web-components/slider/sp-slider.js';
+import '@material/mwc-tab-bar';
+import '@material/mwc-tab';
+import '@material/mwc-switch';
+import '@material/mwc-slider';
+import '@material/mwc-textfield';
+import '@material/mwc-fab';
+import '@material/mwc-icon';
 
 import { Tab } from '@material/mwc-tab/mwc-tab.js';
 import { TabBar } from '@material/mwc-tab-bar/mwc-tab-bar.js';
 import { Switch } from '@material/mwc-switch/mwc-switch.js';
+import { Slider } from '@material/mwc-slider/slider.js';
+import { FormfieldBase } from '@material/mwc-formfield/mwc-formfield-base.js';
+import { TextField } from '@material/mwc-textfield/mwc-textfield.js';
 
 type ScheduleIndex = '1' | '2' | '3' | '4' | '5' | '6' | '7';
 type DayOfWeekIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -40,21 +45,17 @@ interface WeeklySchedule {
 }
 
 @customElement('valve-settings')
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export class ValveSettings extends LitElement {
   static styles = css`
-    sp-divider {
-      margin-top: var(--spectrum-global-dimension-size-125);
-    }
-
-    sp-slider {
-      margin-left: var(--spectrum-global-dimension-size-250);
-      width: var(--spectrum-global-dimension-size-1800);
-    }
-
     .content {
       margin-left: 12px;
       margin-right: 12px;
       height: 100%;
+    }
+
+    .weekswitch {
+      height: 36px;
     }
 
     .schedule {
@@ -78,9 +79,13 @@ export class ValveSettings extends LitElement {
     }
 
     .button {
-      margin: var(--spectrum-global-dimension-size-250) var(--spectrum-global-dimension-size-125);
+      margin: 20px 16px;
       display: flex;
       justify-content: flex-end;
+    }
+
+    mwc-slider {
+      width: 210px;
     }
   `;
 
@@ -100,7 +105,6 @@ export class ValveSettings extends LitElement {
     if (this.valveIndex < 0) return [];
 
     const valveId = this.tabs[this.valveIndex]?.id;
-    console.log(`${this.valveIndex}, ${valveId}`);
     if (!valveId) return [];
 
     const itemTemplates: TemplateResult[] = [];
@@ -109,53 +113,49 @@ export class ValveSettings extends LitElement {
       const restore = this.getSetting(valveId);
       const daySchedule: ValveTiming = restore && restore.weekly_schedule[(index + 1).toString()];
       const transitionList = daySchedule?.transitions || [];
-      const switchMoToTh = this.querySelector('mwc-switch') as Switch;
+      const switchMoToTh = this.shadowRoot?.querySelector('mwc-switch') as Switch;
 
       if (index === 0 || !switchMoToTh?.selected || (!!switchMoToTh?.selected && index > 3)) {
         itemTemplates.push(
           html`
             <div>
-              <h4 class="spectrum-Heading--subtitle1">
-                ${!!switchMoToTh?.selected && index === 0 ? 'Montag - Donnerstag' : day}
-              </h4>
+              <h4>${!!switchMoToTh?.selected && index === 0 ? 'Montag - Donnerstag' : day}</h4>
               ${index === 0
-                ? html`
+                ? html`<div class="weekswitch">
                     <mwc-formfield label="Montag - Donnerstag">
                       <mwc-switch
-                        @click=${(event): void => {
-                          event.target.selected = !event.target.selected;
-                          console.log(event.target.selected);
+                        @click=${(): void => {
                           this.requestUpdate();
                         }}
                       ></mwc-switch>
                     </mwc-formfield>
-                  `
+                  </div> `
                 : nothing}
 
               <div class="values">
-                ${[...Array(transitionList?.length || 4).keys()].map(i => {
+                ${[...Array(transitionList?.length || 4).keys()].map((i) => {
                   return html`
                     <div class="entry">
-                      <sp-number-field
-                        min="0"
-                        max="23"
-                        value=${Math.floor(transitionList[i]?.transitionTime / 60) || [6, 12, 18, 23][i]}
-                      ></sp-number-field>
-                      :
-                      <sp-number-field
-                        min="0"
-                        max="59"
-                        value=${transitionList[i]?.transitionTime % 60 || 0}
-                        format-options='{ "minimumIntegerDigits": 2 }'
-                      ></sp-number-field>
-                      <sp-slider
-                        label="Temperatur"
-                        variant="ramp"
-                        value=${transitionList[i]?.heatSetpoint || '20'}
-                        min="15"
-                        max="30"
-                        format-options='{"style": "unit","unit": "degree","unitDisplay": "narrow"}'
-                      ></sp-slider>
+                      <mwc-textfield
+                        type="time"
+                        min="00:00"
+                        max="23:59"
+                        step="60"
+                        value=${this.toHoursAndMinutes(transitionList[i]?.transitionTime || [6, 12, 18, 23][i] * 60)}
+                      ></mwc-textfield>
+
+                      <mwc-formfield label=${transitionList[i]?.heatSetpoint || '20'} id="${day}-templabel-${i}">
+                        <mwc-slider
+                          label="Temperatur"
+                          value=${Number(transitionList[i]?.heatSetpoint || '20')}
+                          min="16"
+                          max="30"
+                          @input=${(event: CustomEvent): void => {
+                            const e = this.shadowRoot?.getElementById(`${day}-templabel-${i}`) as FormfieldBase;
+                            if (e) e.label = event.detail.value;
+                          }}
+                        ></mwc-slider
+                      ></mwc-formfield>
                     </div>
                   `;
                 })}
@@ -167,6 +167,12 @@ export class ValveSettings extends LitElement {
       }
     });
     return itemTemplates;
+  }
+
+  private toHoursAndMinutes(totalMinutes: number): string {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   }
 
   private renderTabBar(): TemplateResult {
@@ -184,11 +190,11 @@ export class ValveSettings extends LitElement {
 
   private updateValveSettings(): void {
     const valveSettings: WeeklySchedule = { weekly_schedule: {} } as WeeklySchedule;
-    this.tabs.forEach(tab => {
+    this.tabs.forEach((tab) => {
       if (tab.active) {
-        const times = tab.querySelectorAll('sp-number-field');
-        const tempSliders = tab.querySelectorAll('sp-slider');
-        const switchMoToTh = tab.querySelector('mwc-switch') as Switch;
+        const times = this.shadowRoot?.querySelectorAll('mwc-textfield') as NodeListOf<TextField>;
+        const tempSliders = this.shadowRoot?.querySelectorAll('mwc-slider') as NodeListOf<Slider>;
+        const switchMoToTh = this.shadowRoot?.querySelector('mwc-switch') as Switch;
         const valveMQTTName = tab.id;
         const indexAdjustment = switchMoToTh?.selected ? 3 : 0;
 
@@ -196,14 +202,12 @@ export class ValveSettings extends LitElement {
           // iterate over the entries
           const transitions: ValveTransition[] = [];
           const numoftrans = 4;
-          const elementsCount = numoftrans * 2; // *2 because we have one element for the hour and one for minutes
-          const startIndexNF = Math.max(settingIndex - indexAdjustment, 0) * elementsCount;
+          const startIndexNF = Math.max(settingIndex - indexAdjustment, 0) * numoftrans;
           const startIndexSlider = Math.max(settingIndex - indexAdjustment, 0) * numoftrans;
-          for (let i = startIndexNF, j = startIndexSlider; i < startIndexNF + elementsCount; i += 2, j += 1) {
-            const hour = times[i].value;
-            const minutes = times[i + 1].value;
-            const temp = tempSliders[j].value;
-            transitions.push({ heatSetpoint: temp.toString(), transitionTime: hour * 60 + minutes });
+          for (let i = startIndexNF, j = startIndexSlider; i < startIndexNF + numoftrans; i++, j++) {
+            const time = times[i]?.value.split(':');
+            const temp = tempSliders[j]?.value;
+            transitions.push({ heatSetpoint: temp.toString(), transitionTime: +time[0] * 60 + +time[1] });
           }
 
           const dayofweek = MondayToSundayIndex[settingIndex];
@@ -241,13 +245,14 @@ export class ValveSettings extends LitElement {
         <span>${this.renderTabBar()}</span>
         <div class="schedule">${this.renderValveWeekSchedule()}</div>
         <div class="button">
-          <mwc-button
-            raised
+          <mwc-fab
+            extended
             label="Änderungen speichern"
             @click=${(): void => {
               this.updateValveSettings();
             }}
-          ></mwc-button>
+            ><mwc-icon slot="icon">save</mwc-icon></mwc-fab
+          >
         </div>
       </div>
     `;
@@ -256,7 +261,7 @@ export class ValveSettings extends LitElement {
   protected firstUpdated(_changedProperties: PropertyValues): void {
     super.firstUpdated(_changedProperties);
 
-    this.tabBar.addEventListener('MDCTabBar:activated', e => {
+    this.tabBar.addEventListener('MDCTabBar:activated', (e) => {
       const { index } = (e as CustomEvent).detail;
       this.valveIndex = index;
     });
