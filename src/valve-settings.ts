@@ -66,7 +66,7 @@ export class ValveSettings extends LitElement {
     }
 
     .values {
-      margin-left: var(--spectrum-global-dimension-size-125);
+      margin-left: 10px;
 
       display: flex;
       flex-direction: column;
@@ -75,11 +75,11 @@ export class ValveSettings extends LitElement {
     .entry {
       display: flex;
       align-items: center;
-      gap: var(--spectrum-global-dimension-size-125);
+      gap: 10px;
     }
 
     .button {
-      margin: 20px 16px;
+      padding: 20px 16px;
       display: flex;
       justify-content: flex-end;
     }
