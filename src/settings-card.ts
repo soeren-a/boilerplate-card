@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { LitElement, html, TemplateResult, css, PropertyValues, CSSResultGroup } from 'lit';
+import { LitElement, html, TemplateResult, css, PropertyValues, CSSResultGroup, render } from 'lit';
 import { customElement, property, state } from 'lit/decorators';
 import {
   HomeAssistant,
@@ -15,6 +15,8 @@ import type { SettingsCardConfig } from './types';
 import { actionHandler } from './action-handler-directive';
 import { localize } from './localize/localize';
 import { Settings } from './valve-settings';
+
+import '@material/mwc-snackbar';
 
 import './valve-settings';
 
@@ -156,9 +158,9 @@ export class BoilerplateCard extends LitElement {
                     console.log(
                       `Service successfully called [domain: mqtt, service: publish, topic: zigbee2mqtt/${valveSettings.name}/set]`,
                     );
-                    this.showToast('Änderungen gespeichert', 'positive');
+                    this.showToast('Änderungen gespeichert.');
                   } else {
-                    this.showToast('Änderungen nicht gespeichert', 'error');
+                    this.showToast('Änderungen konnten nicht gespeichert werden.');
                   }
                 });
               });
@@ -206,17 +208,12 @@ export class BoilerplateCard extends LitElement {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private showToast(_message: string, _variant: 'positive' | 'error'): void {
-    /*const element = this.shadowRoot?.querySelector('ha-card') as HTMLElement;
+  private showToast(message: string): void {
+    const element = this.shadowRoot?.querySelector('ha-card') as HTMLElement;
     if (element) {
-      this.toasts.push(
-        html`
-          <sp-toast open variant=${variant}>${message}</sp-toast>
-        `,
-      );
+      this.toasts.push(html` <mwc-snackbar open closeOnEscape labelText=${message}></mwc-snackbar> `);
       render(this.toasts, element);
-    }*/
+    }
   }
 
   private showWarning(warning: string): TemplateResult {
